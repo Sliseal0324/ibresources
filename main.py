@@ -142,7 +142,7 @@ chem_sections = {
         "Structure 3.2 Functional groups: Classification of organic compounds",
     ],
     "Reactivity 3. What are the mechanisms of chemical change?": [
-        "Reactivity 3.1 Proton transfer reactions",
+        "Reactivity 3.11 Proton transfer reactions",
         "Reactivity 3.2 Electron transfer reactions",
         "Reactivity 3.3 Electron sharing reactions",
         "Reactivity 3.4 Electron-pair sharing reactions",
