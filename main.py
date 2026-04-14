@@ -1,5 +1,16 @@
 import streamlit as st
 
+st.set_page_config(layout="wide")
+
+hide_streamlit_style = """
+<style>
+#MainMenu {visibility: hidden;}
+header {visibility: hidden;}
+footer {visibility: hidden;}
+</style>
+"""
+
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 st.set_page_config(page_title="IB Resource Center", page_icon="📚", layout="wide")
 
 # =========================
