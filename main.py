@@ -1,19 +1,5 @@
 import streamlit as st
-
-st.set_page_config(layout="wide")
-
-hide_streamlit_style = """
-<style>
-#MainMenu {visibility: hidden;}
-header {visibility: hidden;}
-footer {visibility: hidden;}
-</style>
-"""
-
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-
-st.set_page_config(layout="wide")
-
+from sqlalchemy import text
 
 st.set_page_config(page_title="IB Resource Center", page_icon="📚", layout="wide")
 
@@ -264,6 +250,59 @@ subject_gradients = {
 }
 
 # =========================
+# DATABASE + AUTH
+# =========================
+conn = st.connection("notes_db", type="sql")
+
+def init_db():
+    with conn.session as s:
+        s.execute(text("""
+            CREATE TABLE IF NOT EXISTS user_notes (
+                user_id TEXT,
+                subject TEXT,
+                section TEXT,
+                subtopic TEXT,
+                note TEXT,
+                PRIMARY KEY (user_id, subject, section, subtopic)
+            )
+        """))
+        s.commit()
+
+def get_user_id():
+    if not st.user.is_logged_in:
+        return None
+    return getattr(st.user, "sub", None) or getattr(st.user, "email", None)
+
+def load_note(user_id, subject, section, subtopic):
+    with conn.session as s:
+        res = s.execute(
+            text("""
+                SELECT note FROM user_notes
+                WHERE user_id=:u AND subject=:s AND section=:sec AND subtopic=:sub
+            """),
+            {"u": user_id, "s": subject, "sec": section, "sub": subtopic},
+        ).fetchone()
+    return res[0] if res else ""
+
+def save_note(user_id, subject, section, subtopic, note):
+    with conn.session as s:
+        s.execute(text("""
+            DELETE FROM user_notes
+            WHERE user_id=:u AND subject=:s AND section=:sec AND subtopic=:sub
+        """), {"u": user_id, "s": subject, "sec": section, "sub": subtopic})
+
+        s.execute(text("""
+            INSERT INTO user_notes VALUES (:u, :s, :sec, :sub, :note)
+        """), {
+            "u": user_id,
+            "s": subject,
+            "sec": section,
+            "sub": subtopic,
+            "note": note,
+        })
+        s.commit()
+
+# =========================
 # STATE
 # =========================
 if "page" not in st.session_state:
@@ -462,7 +501,23 @@ def go_to(page, subject=None, section=None):
         st.session_state.section = section
     st.rerun()
 
+init_db()
 
+if not st.user.is_logged_in:
+    st.title("IB Resource Center")
+    st.write("Please log in to save your notes.")
+    if st.button("Log in with Google", use_container_width=True):
+        st.login()
+    st.stop()
+
+user_id = get_user_id()
+
+top1, top2 = st.columns([5,1])
+with top1:
+    st.write(f"Logged in as {getattr(st.user, 'email', 'User')}")
+with top2:
+    if st.button("Logout"):
+        st.logout()
 def render_top_nav():
     st.markdown(
         """
@@ -502,7 +557,7 @@ def render_home_page():
             """
             <div class="hero-card">
                 <div class="eyebrow">Learning-focused study space</div>
-                <div class="hero-title">Build your IB revision space like a real site for understanding topics, not just storing notes.</div>
+                <div class="hero-title">Your resource pack for the IBDP methematics and sciences.</div>
                 <div class="hero-text">
                     Browse subjects, open syllabus sections, collect useful links, and keep past paper reflections in one place. Each page is designed to help students learn ideas clearly, connect related topics, and grow explanations over time.
                 </div>
@@ -610,23 +665,44 @@ def render_subject_home(subject):
 
 
 def render_section(subject, section):
-    st.markdown('<div class="back-row">', unsafe_allow_html=True)
     st.button("← Back to subject", on_click=go_to, args=("Subject", subject))
-    st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown(f'<div class="page-heading">{section}</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="page-copy">Use each smaller section to explain ideas clearly, add worked examples, and write reminders about what students usually misunderstand.</div>',
-        unsafe_allow_html=True,
-    )
+
     for sub in subject_map[subject][section]:
-        with st.container(border=True):
-            st.subheader(sub)
-            st.text_area(
-                sub,
-                "Add explanation here. You could include what the idea means, how to solve typical questions, and what students often get wrong.",
-                key=f"section_{subject}_{section}_{sub}",
-                height=150,
-            )
+
+        with st.expander(sub, expanded=False):
+
+            col1, col2 = st.columns([1,1])
+
+            # LEFT: Explanation (your content)
+            with col1:
+                st.markdown("### Explanation")
+                st.text_area(
+                    f"Explanation {sub}",
+                    value="Add teaching content here.",
+                    key=f"exp_{subject}_{section}_{sub}",
+                    height=250
+                )
+
+            # RIGHT: Student notes (saved to DB)
+            with col2:
+                st.markdown("### My Notes")
+
+                note_key = f"note_{subject}_{section}_{sub}"
+
+                if note_key not in st.session_state:
+                    st.session_state[note_key] = load_note(user_id, subject, section, sub)
+
+                note = st.text_area(
+                    f"My notes {sub}",
+                    key=note_key,
+                    height=250
+                )
+
+                if st.button("Save", key=f"save_{note_key}"):
+                    save_note(user_id, subject, section, sub, note)
+                    st.success("Saved!")
 
 
 def render_links(subject):
