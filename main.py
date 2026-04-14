@@ -459,7 +459,7 @@ def go_to(page, subject=None, section=None):
 
 
 def render_top_nav():
-    left, right = st.columns([1.8, 1])
+    left, right = st.columns([1, 1])
     with left:
         st.markdown(
             """
