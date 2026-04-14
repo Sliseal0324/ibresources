@@ -1,8 +1,17 @@
 import streamlit as st
 from sqlalchemy import text
 
-st.set_page_config(page_title="IB Resource Center", page_icon="📚", layout="wide")
+hide_streamlit_style = """
+<style>
+#MainMenu {visibility: hidden;}
+header {visibility: hidden;}
+footer {visibility: hidden;}
+</style>
+"""
 
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+st.set_page_config(page_title="IB Resource Center", page_icon="📚", layout="wide")
 # =========================
 # DATA
 # =========================
@@ -503,21 +512,21 @@ def go_to(page, subject=None, section=None):
 
 init_db()
 
-if not st.user.is_logged_in:
-    st.title("IB Resource Center")
-    st.write("Please log in to save your notes.")
-    if st.button("Log in with Google", use_container_width=True):
-        st.login()
-    st.stop()
-
 user_id = get_user_id()
 
-top1, top2 = st.columns([5,1])
+top1, top2 = st.columns([5, 1])
 with top1:
-    st.write(f"Logged in as {getattr(st.user, 'email', 'User')}")
+    if st.user.is_logged_in:
+        st.write(f"Logged in as {getattr(st.user, 'email', 'User')}")
+    else:
+        st.write("Browsing as guest")
 with top2:
-    if st.button("Logout"):
-        st.logout()
+    if st.user.is_logged_in:
+        if st.button("Logout"):
+            st.logout()
+    else:
+        if st.button("Login"):
+            st.login()
 def render_top_nav():
     st.markdown(
         """
@@ -668,14 +677,15 @@ def render_section(subject, section):
     st.button("← Back to subject", on_click=go_to, args=("Subject", subject))
 
     st.markdown(f'<div class="page-heading">{section}</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="page-copy">Each subtopic has shared material on the left and personal notes on the right.</div>',
+        unsafe_allow_html=True,
+    )
 
     for sub in subject_map[subject][section]:
-
         with st.expander(sub, expanded=False):
+            col1, col2 = st.columns([1, 1])
 
-            col1, col2 = st.columns([1,1])
-
-            # LEFT: Explanation (your content)
             with col1:
                 st.markdown("### Explanation")
                 st.text_area(
@@ -685,25 +695,28 @@ def render_section(subject, section):
                     height=250
                 )
 
-            # RIGHT: Student notes (saved to DB)
             with col2:
                 st.markdown("### My Notes")
 
-                note_key = f"note_{subject}_{section}_{sub}"
+                if not st.user.is_logged_in:
+                    st.info("Log in with Google to write and save personal notes.")
+                    if st.button("Log in to use notes", key=f"login_{subject}_{section}_{sub}"):
+                        st.login()
+                else:
+                    note_key = f"note_{subject}_{section}_{sub}"
 
-                if note_key not in st.session_state:
-                    st.session_state[note_key] = load_note(user_id, subject, section, sub)
+                    if note_key not in st.session_state:
+                        st.session_state[note_key] = load_note(user_id, subject, section, sub)
 
-                note = st.text_area(
-                    f"My notes {sub}",
-                    key=note_key,
-                    height=250
-                )
+                    note = st.text_area(
+                        f"My notes {sub}",
+                        key=note_key,
+                        height=250
+                    )
 
-                if st.button("Save", key=f"save_{note_key}"):
-                    save_note(user_id, subject, section, sub, note)
-                    st.success("Saved!")
-
+                    if st.button("Save notes", key=f"save_{note_key}"):
+                        save_note(user_id, subject, section, sub, note)
+                        st.success("Saved.")
 
 def render_links(subject):
     title = subject if subject != "Chem" else "Chemistry"
