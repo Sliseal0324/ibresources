@@ -2,15 +2,7 @@ import streamlit as st
 
 st.set_page_config(layout="wide")
 
-hide_streamlit_style = """
-<style>
-#MainMenu {visibility: hidden;}
-header {visibility: hidden;}
-footer {visibility: hidden;}
-</style>
-"""
 
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 st.set_page_config(page_title="IB Resource Center", page_icon="📚", layout="wide")
 
 # =========================
@@ -142,7 +134,7 @@ chem_sections = {
         "Structure 3.2 Functional groups: Classification of organic compounds",
     ],
     "Reactivity 3. What are the mechanisms of chemical change?": [
-        "Reactivity 3.11 Proton transfer reactions",
+        "Reactivity 3.1 Proton transfer reactions",
         "Reactivity 3.2 Electron transfer reactions",
         "Reactivity 3.3 Electron sharing reactions",
         "Reactivity 3.4 Electron-pair sharing reactions",
@@ -452,17 +444,17 @@ st.markdown(
 # =========================
 def go_to(page, subject=None, section=None):
     st.session_state.page = page
-    if subject:
+    if subject is not None:
         st.session_state.subject = subject
-    if section:
+    if section is not None:
         st.session_state.section = section
+    st.rerun()
 
 
 def render_top_nav():
-    left, right = st.columns([1, 1])
-    with left:
-        st.markdown(
-            """
+    st.markdown(
+        """
+        <div class="site-header-full">
             <div class="brand-wrap">
                 <div class="brand-badge">IB</div>
                 <div>
@@ -470,18 +462,24 @@ def render_top_nav():
                     <div class="brand-subtitle">Study notes, topic maps, and paper practice</div>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with right:
-        c1, c2, c3, c4 = st.columns(4)
-        if c1.button("Home", use_container_width=True):
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    nav1, nav2, nav3, nav4 = st.columns([1, 1, 1, 1])
+
+    with nav1:
+        if st.button("Home", key="nav_home", use_container_width=True):
             go_to("Home")
-        if c2.button("Math AA", use_container_width=True):
+    with nav2:
+        if st.button("Math AA", key="nav_math", use_container_width=True):
             go_to("Subject", "Math AA")
-        if c3.button("Chemistry", use_container_width=True):
+    with nav3:
+        if st.button("Chemistry", key="nav_chem", use_container_width=True):
             go_to("Subject", "Chem")
-        if c4.button("Physics", use_container_width=True):
+    with nav4:
+        if st.button("Physics", key="nav_physics", use_container_width=True):
             go_to("Subject", "Physics")
 
 
